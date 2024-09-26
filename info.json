@@ -1,0 +1,13 @@
+{
+    "name": "Rhythm'n RIVES",
+    "summary": "A rhythm game",
+    "description": "In Rhythm'n RIVES you should follow the rhythm and hit direction when the moving arrows pass throught the target. More in synch hits award more points, and combo streaks without misses also increase the score.\n\nGame controls:\n\n- ARROWS keys to hit the four directions.\n- L1/s and R1/d to hit the upper left and right directions.",
+    "status": "prototype",
+    "tags": ["rhythm", "music"],
+    "authors": [{
+        "name": "Lyno Ferraz",
+        "link": "https://github.com/lynoferraz"
+    }],
+    "url": "https://github.com/lynoferraz/riv-rhythm",
+    "links": ["https://github.com/lynoferraz/riv-rhythm"]
+}
