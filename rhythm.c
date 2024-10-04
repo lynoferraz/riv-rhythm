@@ -48,6 +48,8 @@ enum {
     MISSES_END,
 };
 
+char *version = "v0.1";
+
 // Game state
 bool wait; // true when game has started
 int random_wait_frame;
@@ -106,6 +108,7 @@ int n_sounds = 0;
 int chosen_sound_ind = -1;
 uint64_t chosen_sound;
 uint64_t sound_ids[SEQT_MAX_SOUNDS];
+uint32_t sound_hashes[SEQT_MAX_SOUNDS];
 int frames_until_mark = 0; // depends on the current speed
 
 uint64_t notes_y_cols_mapping[SEQT_NOTES_TRACKS][SEQT_NOTES_ROWS];
@@ -129,6 +132,19 @@ static uint8_t track_change_intervals[SEQT_NOTES_TRACKS] = {0,0,0,0};
 int fix_frame = 0;
 
 // utils
+uint32_t simple_hash(const char *s, size_t len) {
+    unsigned char *p = (unsigned char*) s;
+    uint32_t h = 0;
+    while(len--) {
+        h += *p++;
+        h += (h << 10);
+        h ^= (h >> 6);
+    }
+    h += (h << 3);
+    h ^= (h >> 11);
+    h += (h << 15);
+    return h;
+}
 
 uint64_t get_note_frame(uint64_t frame) {
     seqt_sound *sound = seqt_get_sound(chosen_sound);
@@ -215,13 +231,8 @@ void initialize() {
     }
 
     if (n_sounds == 0) {
-        sound_ids[n_sounds] = seqt_play(seqt_make_source_from_file("seqs/01.seqt.rivcard"), n_loops);
-        n_sounds++;
-        sound_ids[n_sounds] = seqt_play(seqt_make_source_from_file("seqs/04.seqt.rivcard"), n_loops);
-        n_sounds++;
         sound_ids[n_sounds] = seqt_play(seqt_make_source_from_file("seqs/f6.seqt.01.rivcard"), n_loops);
-        n_sounds++;
-        sound_ids[n_sounds] = seqt_play(seqt_make_source_from_file("seqs/07.seqt.rivcard"), n_loops);
+        sound_hashes[n_sounds] = simple_hash((unsigned char*)seqt_get_sound(sound_ids[n_sounds])->source,sizeof(seqt_source));
         n_sounds++;
     }
 
@@ -275,7 +286,15 @@ void start_game() {
             sliding_arrows[c][i] = 0;
         }
     }
+
     started = true;
+
+    for (int i = 0; i < n_sounds; i++) {
+        uint64_t sound_id = sound_ids[i];
+        if (sound_id != chosen_sound) {
+            seqt_destroy_source(seqt_get_sound(sound_id)->source);
+        }
+    }
 
     int16_t music_bpm = seqt_get_sound(chosen_sound)->source->bpm;
     hits_per_second = music_bpm*((1.0*TIME_SIG)/60); // beats per second
@@ -598,7 +617,11 @@ void draw_game() {
         riv_draw_text(buf, RIV_SPRITESHEET_FONT_5X7, RIV_TOPLEFT, 10, 240, 1, RIV_COLOR_WHITE);
         riv_snprintf(buf, sizeof(buf), "Score: %d",score);
         riv_draw_text(buf, RIV_SPRITESHEET_FONT_5X7, RIV_TOP, 128, 220, 1, RIV_COLOR_WHITE);
+        riv_snprintf(buf, sizeof(buf), "%08x",sound_hashes[chosen_sound_ind]);
+        riv_draw_text(buf, RIV_SPRITESHEET_FONT_5X7, RIV_TOP, 128, 240, 1, RIV_COLOR_WHITE);
     }
+    riv_snprintf(buf, sizeof(buf), "%s",version);
+    riv_draw_text(buf, RIV_SPRITESHEET_FONT_5X7, RIV_BOTTOMRIGHT, 255, 255, 1, RIV_COLOR_SLATE);
 
 }
 
@@ -612,10 +635,11 @@ void update_start_screen() {
                 chosen_sound = sound_ids[chosen_sound_ind];
             }
             // seqt_sound *sound = &seqt.sounds[chosen_sound];
-            if (riv->keys[RIV_GAMEPAD1_RIGHT].press || riv->keys[RIV_GAMEPAD1_LEFT].press) {
-                if (riv->keys[RIV_GAMEPAD1_RIGHT].press) {
+            if (riv->keys[RIV_GAMEPAD1_RIGHT].press || riv->keys[RIV_GAMEPAD1_LEFT].press ||
+                    riv->keys[RIV_GAMEPAD1_UP].press || riv->keys[RIV_GAMEPAD1_DOWN].press) {
+                if (riv->keys[RIV_GAMEPAD1_RIGHT].press || riv->keys[RIV_GAMEPAD1_DOWN].press) {
                     chosen_sound_ind = chosen_sound_ind == n_sounds - 1 ? 0 : chosen_sound_ind + 1;
-                } else if (riv->keys[RIV_GAMEPAD1_LEFT].press) {
+                } else if (riv->keys[RIV_GAMEPAD1_LEFT].press || riv->keys[RIV_GAMEPAD1_UP].press) {
                     chosen_sound_ind = chosen_sound_ind == 0 ? n_sounds - 1 : chosen_sound_ind - 1;
                 }
                 chosen_sound = sound_ids[chosen_sound_ind];
@@ -671,6 +695,10 @@ void draw_start_screen() {
         char buf[128];
         riv_snprintf(buf, sizeof(buf), "Sound to play: %d/%d",chosen_sound,n_sounds);
         riv_draw_text(buf, RIV_SPRITESHEET_FONT_5X7, RIV_TOP, 128, 128+64, 1, RIV_COLOR_WHITE);
+        riv_snprintf(buf, sizeof(buf), "%08x",sound_hashes[chosen_sound_ind]);
+        riv_draw_text(buf, RIV_SPRITESHEET_FONT_5X7, RIV_TOP, 128, 128+84, 1, RIV_COLOR_WHITE);
+        riv_snprintf(buf, sizeof(buf), "%s",version);
+        riv_draw_text(buf, RIV_SPRITESHEET_FONT_5X7, RIV_BOTTOMRIGHT, 255, 255, 1, RIV_COLOR_SLATE);
     }
 }
 
